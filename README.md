@@ -147,8 +147,5 @@ Očekuje se gašenje izlaza i prestanak slanja alarma.
 
 ## Autori
 
-Ime i prezime: 
  * Aleksandar Trifunović EE 21/2021
  * Filip Lazić EE 144/2021
-Predmet: Autoelektronika
-Projekat: Kontrola stanja sigurnosnih pojaseva u automobilu
