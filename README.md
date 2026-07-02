@@ -4,7 +4,7 @@
 
 Cilj projekta je realizacija softvera za kontrolu stanja sigurnosnih pojaseva u automobilu. Sistem prati da li su vozač i suvozač vezani, kao i da li je suvozač prisutan na sjedištu. Na osnovu dobijenih podataka sistem prikazuje stanje na 7-segmentnom displeju, upravlja LED barom i šalje odgovarajuće poruke preko serijske komunikacije. Podaci sa senzora simuliraju se pomoću UniCom kanala 0, komande i status sistema koriste UniCom kanal 1, dok se upozorenja šalju na UniCom kanal 2.
 
-## Zahtevi projekta
+## Zahtjevi projekta
 
 * minimum 4 taska:
 
@@ -66,25 +66,20 @@ Cilj projekta je realizacija softvera za kontrolu stanja sigurnosnih pojaseva u 
 * Preko Command Prompt-a ući u folder sa periferijama.
 
 * Pokrenuti 7-segmentni displej sa 5 cifara:
-```text
-Seg7_Mux.exe 5
-```
+  
+  * Seg7_Mux.exe 5
 
 * Pokrenuti LED bar sa jednim ulaznim i dva izlazna stubca:
-
-```text
-LED_bars.exe gRR
-```
+  
+  * LED_bars.exe gRR
 
 * Pokrenuti tri UniCom terminala:
+  
+  * UniCom.exe 0
+  * UniCom.exe 1
+  * UniCom.exe 2
 
-```text
-UniCom.exe 0
-UniCom.exe 1
-UniCom.exe 2
-```
-
-* UniCom kanal 0 koristi se za simulaciju senzora, UniCom kanal 1 za komande i status sistema, a UniCom kanal 2 za upozorenja.
+* UniCom kanal 0 koristi se za simulaciju senzora, UniCom kanal 1 za komande i status sistema, a UniCom kanal 2 za upozorenja. Važno je da se za svaki UniCom kanal pokrene poseban Command Prompt.
 
 ## Podešavanje UniCom kanala 0
 
@@ -150,11 +145,10 @@ Ako je poslata senzorska vrijednost $1,0,700#, suvozač se tada ne detektuje jer
 
 Očekuje se gašenje izlaza i prestanak slanja alarma.
 
-## Autor
+## Autori
 
 Ime i prezime: 
-Aleksandar Trifunović EE 21/2021
-Filip Lazić EE 144/2021
-
+ * Aleksandar Trifunović EE 21/2021
+ * Filip Lazić EE 144/2021
 Predmet: Autoelektronika
 Projekat: Kontrola stanja sigurnosnih pojaseva u automobilu
