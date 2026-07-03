@@ -1,16 +1,3 @@
-/* =====================================================================
- *  PROJEKAT: Kontrola stanja sigurnosnih pojaseva u automobilu
- *  Fajl:     main_application.c  (jedini fajl koji se ocenjuje / menja)
- *  Platforma: FreeRTOS Windows simulator (Visual Studio, MSVC v142)
- *
- *  Periferije (pokrecu se kao zasebni .exe simulatori):
- *    - UniCom kanal 0  -> senzori (auto-odgovor preko Trigera, svakih 200 ms)
- *    - UniCom kanal 1  -> PC: komande (START/STOP/PRAG_x) + status na 2000 ms
- *    - UniCom kanal 2  -> PC: upozorenja kad neko nije vezan (na ~100 ms)
- *    - LED bar         -> stub 0 ulazni (kontakt), stub 1 i 2 izlazni
- *    - Seg7Mux displej -> osvezavanje na 100 ms
- * ===================================================================== */
-
  /* STANDARD INCLUDES */
 #include <stdio.h>
 #include <string.h>
@@ -103,12 +90,13 @@ static QueueHandle_t     PC1SendQueue;    /* obrada -> PC1 (status)       */
 
 static SemaphoreHandle_t RXC0_Sem;        /* primljen karakter na kanalu 0 */
 static SemaphoreHandle_t RXC1_Sem;        /* primljen karakter na kanalu 1 */
+static SemaphoreHandle_t TBE_Sem;         /* UniCom zavrsio slanje znaka   */
 static SemaphoreHandle_t SerialTx_Mutex;  /* serijalizuje slanje na UniCom */
 static SemaphoreHandle_t SerialRx_Mutex;  /* stiti get_serial_character sqn */
 
 /* Velicina poruka koje se salju kroz redove */
 #define STATUS_MSG_LEN  128U
-#define SERIAL_TBE_TIMEOUT_MS  5U
+#define SERIAL_TBE_TIMEOUT_MS  80U
 
 /* ---------------------------------------------------------------------
  * PRIORITETI TASKOVA (configMAX_PRIORITIES = 7 -> validno 1..6)
@@ -142,7 +130,9 @@ static void LED_Task(void* pvParameters);
  * ===================================================================== */
 static uint32_t prvProcessTBEInterrupt(void)
 {
-    return 0U;
+    BaseType_t xHigherPTW = pdFALSE;
+    (void)xSemaphoreGiveFromISR(TBE_Sem, &xHigherPTW);
+    portYIELD_FROM_ISR(xHigherPTW);
 }
 
 /* =====================================================================
@@ -178,19 +168,11 @@ static uint32_t prvProcessRXCInterrupt(void)
  * Posle svakog poslatog znaka ceka se TBE prekid. Timeout sprecava
  * trajno zakljucavanje ako simulator ne posalje prekid.
  * ------------------------------------------------------------------- */
-static void serial_wait_tbe(uint8_t ch)
+static void serial_clear_tbe_sem(void)
 {
-    TickType_t start = xTaskGetTickCount();
-
-    while (get_TBE_status(ch) == 0)
+    while (xSemaphoreTake(TBE_Sem, 0U) == pdTRUE)
     {
-        if ((xTaskGetTickCount() - start) >=
-            pdMS_TO_TICKS(SERIAL_TBE_TIMEOUT_MS))
-        {
-            break;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1U));
+        /* isprazni zastarele TBE signale pre novog slanja */
     }
 }
 
@@ -198,8 +180,9 @@ static void serial_send_char(uint8_t ch, uint8_t c)
 {
     (void)xSemaphoreTake(SerialTx_Mutex, portMAX_DELAY);
 
+    serial_clear_tbe_sem();
     (void)send_serial_character(ch, c);
-    serial_wait_tbe(ch);
+    (void)xSemaphoreTake(TBE_Sem, pdMS_TO_TICKS(SERIAL_TBE_TIMEOUT_MS));
 
     (void)xSemaphoreGive(SerialTx_Mutex);
 }
@@ -209,11 +192,12 @@ static void serial_send_string(uint8_t ch, const char* str)
     uint16_t i = 0U;
 
     (void)xSemaphoreTake(SerialTx_Mutex, portMAX_DELAY);
+    serial_clear_tbe_sem();
 
     while (str[i] != '\0')
     {
         (void)send_serial_character(ch, (uint8_t)str[i]);
-        serial_wait_tbe(ch);
+        (void)xSemaphoreTake(TBE_Sem, pdMS_TO_TICKS(SERIAL_TBE_TIMEOUT_MS));
         i++;
     }
 
@@ -252,6 +236,7 @@ void main_demo(void)
     /* Semafori */
     RXC0_Sem = xSemaphoreCreateBinary();
     RXC1_Sem = xSemaphoreCreateBinary();
+    TBE_Sem = xSemaphoreCreateBinary();
     SerialTx_Mutex = xSemaphoreCreateMutex();
     SerialRx_Mutex = xSemaphoreCreateMutex();
 
